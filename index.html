@@ -1,0 +1,117 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Medicine Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f7f8;
+      margin: 0;
+      padding: 25px;
+      color: #183b45;
+    }
+    .container {
+      max-width: 650px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 4px 16px #0001;
+    }
+    h1 { color: #087f8c; }
+    input, button {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      margin: 7px 0;
+      border-radius: 8px;
+      border: 1px solid #cbdde0;
+      font-size: 16px;
+    }
+    button {
+      background: #087f8c;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    .medicine {
+      background: #e8f5f5;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+    }
+    small { color: #567; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💊 Smart Medicine Management</h1>
+    <p>Manage your medicine schedule in one place.</p>
+
+    <h3>Add a medicine</h3>
+    <form id="medicineForm">
+      <input id="medicineName" placeholder="Medicine name" required>
+      <label for="medicineTime">Reminder time</label>
+      <input id="medicineTime" type="time" required>
+      <label for="medicineDate">Expiry date</label>
+      <input id="medicineDate" type="date" required>
+      <button type="submit">Add Medicine</button>
+    </form>
+
+    <h3>My Medicines</h3>
+    <div id="medicineList">No medicines added yet.</div>
+    <small>This demo does not send automatic notifications or confirm that a dose was taken.</small>
+  </div>
+
+  <script>
+    const form = document.getElementById("medicineForm");
+    const list = document.getElementById("medicineList");
+
+    form.addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const name = document.getElementById("medicineName").value.trim();
+      const time = document.getElementById("medicineTime").value;
+      const expiry = document.getElementById("medicineDate").value;
+
+      const item = document.createElement("div");
+      item.className = "medicine";
+
+      const title = document.createElement("strong");
+      title.textContent = name;
+
+      const details = document.createElement("p");
+      details.textContent = "Reminder: " + time + " | Expiry: " + expiry;
+
+      const status = document.createElement("p");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      status.textContent =
+        new Date(expiry + "T00:00:00") < today
+          ? "⚠️ Expired"
+          : "✓ Added to your list";
+
+      const remove = document.createElement("button");
+      remove.textContent = "Remove";
+      remove.type = "button";
+      remove.addEventListener("click", () => {
+        item.remove();
+        if (list.children.length === 0) {
+          list.textContent = "No medicines added yet.";
+        }
+      });
+
+      item.append(title, details, status, remove);
+
+      if (list.textContent === "No medicines added yet.") {
+        list.textContent = "";
+      }
+      list.appendChild(item);
+      form.reset();
+    });
+  </script>
+</body>
+</html>
