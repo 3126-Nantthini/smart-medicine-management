@@ -2,239 +2,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Medicine Management</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f0f7f8;color:#183b45}
-header{background:#087f8c;color:white;padding:22px 6%}
-header h1{margin:0;font-size:25px}
-header p{margin:6px 0 0}
-main{max-width:1050px;margin:28px auto;padding:0 18px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}
-.card,.panel{background:white;border:1px solid #dce9eb;border-radius:13px;padding:20px;margin-bottom:18px}
-.stats h2{font-size:30px;margin:8px 0 0;color:#087f8c}
-.muted{color:#678087;font-size:14px}
-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
-label{display:block;font-size:14px;font-weight:bold;margin-bottom:5px}
-input,select,button{font:inherit;padding:11px;border-radius:8px}
-input,select{width:100%;border:1px solid #cbdde0;background:white}
-button{border:0;cursor:pointer;font-weight:bold}
-.primary{background:#087f8c;color:white}
-.secondary{background:#e8f2f3;color:#075d68}
-.danger{background:#fff0ee;color:#b83227}
-.full{grid-column:1/-1}
-.medicine{border:1px solid #dce9eb;border-radius:10px;padding:16px;margin-top:12px;background:#fcfefe}
-.medicine h3{margin:0 0 8px}
-.medicine p{margin:5px 0}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.actions button{font-size:13px}
-.status{font-weight:bold;color:#21865b}
-.warning{color:#b83227;font-weight:bold}
-.notice{background:#fff7df;color:#785b12;padding:12px;border-radius:8px;font-size:13px}
-@media(max-width:650px){.stats{grid-template-columns:1fr}form{grid-template-columns:1fr}.full{grid-column:auto}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Medicine Management</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <h1>💊 Smart Medicine Management</h1>
-  <p>Your personal medicine schedule and dose tracker</p>
-</header>
-<main>
-  <h2>My Dashboard</h2>
-  <p class="muted">Manage your medicines and keep track of scheduled doses.</p>
+  <header>
+    <div class="logo">💊 SmartMed</div>
+    <span>Medicine Management Dashboard</span>
+  </header>
 
-  <section class="stats">
-    <div class="card"><div class="muted">Total Medicines</div><h2 id="total">0</h2></div>
-    <div class="card"><div class="muted">Doses Due Today</div><h2 id="due">0</h2></div>
-    <div class="card"><div class="muted">Expired Medicines</div><h2 id="expired">0</h2></div>
-  </section>
+  <main>
+    <section class="welcome">
+      <h1>Smart Medicine Management</h1>
+      <p class="muted">Organize your medicines, schedules, and expiry dates in one place.</p>
+    </section>
 
-  <section class="panel">
-    <h2 id="formTitle">Add a Medicine</h2>
-    <form id="medicineForm">
-      <div>
-        <label for="name">Medicine name</label>
-        <input id="name" required placeholder="e.g. Medicine A">
-      </div>
-      <div>
-        <label for="dosage">Dosage (as prescribed)</label>
-        <input id="dosage" required placeholder="e.g. 1 tablet">
-      </div>
-      <div>
-        <label for="frequency">Frequency</label>
-        <select id="frequency">
-          <option>Once daily</option>
-          <option>Twice daily</option>
-          <option>Three times daily</option>
-          <option>As prescribed</option>
-        </select>
-      </div>
-      <div>
-        <label for="time">Reminder time</label>
-        <input id="time" type="time" required>
-      </div>
-      <div>
-        <label for="expiry">Expiry date</label>
-        <input id="expiry" type="date" required>
-      </div>
-      <div class="full actions">
-        <button class="primary" type="submit" id="submitBtn">Add Medicine</button>
-        <button class="secondary" type="button" id="cancelEdit" hidden>Cancel Edit</button>
-      </div>
-    </form>
-  </section>
+    <section class="stats">
+      <article class="stat-card">
+        <p>Total Medicines</p>
+        <h2 id="total">0</h2>
+      </article>
+      <article class="stat-card">
+        <p>Active Medicines</p>
+        <h2 id="due">0</h2>
+      </article>
+      <article class="stat-card">
+        <p>Expired Medicines</p>
+        <h2 id="expired">0</h2>
+      </article>
+    </section>
 
-  <section class="panel">
-    <h2>My Medicines</h2>
-    <div id="medicineList"></div>
-  </section>
+    <section class="panel">
+      <h2 id="formTitle">Add a Medicine</h2>
 
-  <section class="panel">
-    <h2>Today's Dose Tracker</h2>
-    <div id="doseList"></div>
-    <p class="notice">This tracker records your acknowledgement only. It cannot verify that medicine was swallowed and does not replace advice from a healthcare professional.</p>
-  </section>
-  <footer class="muted">Smart Medicine Management System · SDG 3: Good Health and Well-being</footer>
-</main>
+      <form id="medicineForm">
+        <div class="field">
+          <label for="name">Medicine Name</label>
+          <input id="name" name="name" placeholder="e.g. Medicine A" required>
+        </div>
 
-<script>
-const $ = id => document.getElementById(id);
-let medicines = [];
-try { medicines = JSON.parse(localStorage.getItem("smartMedicines") || "[]"); }
-catch { medicines = []; }
-let editId = null;
-let taken = {};
-try {
-  const saved = JSON.parse(localStorage.getItem("smartTaken") || "{}");
-  if (saved.date === new Date().toLocaleDateString()) taken = saved.items || {};
-} catch {}
+        <div class="field">
+          <label for="dosage">Dosage</label>
+          <input id="dosage" name="dosage" placeholder="e.g. 1 tablet" required>
+        </div>
 
-function save() {
-  localStorage.setItem("smartMedicines", JSON.stringify(medicines));
-  localStorage.setItem("smartTaken", JSON.stringify({
-    date: new Date().toLocaleDateString(), items: taken
-  }));
-}
+        <div class="field">
+          <label for="frequency">Frequency</label>
+          <select id="frequency" name="frequency" required>
+            <option value="">Select frequency</option>
+            <option>Once daily</option>
+            <option>Twice daily</option>
+            <option>Three times daily</option>
+            <option>As prescribed</option>
+          </select>
+        </div>
 
-function expired(m) {
-  return m.expiry < new Date().toISOString().slice(0,10);
-}
+        <div class="field">
+          <label for="time">Reminder Time</label>
+          <input type="time" id="time" name="time" required>
+        </div>
 
-function render() {
-  $("total").textContent = medicines.length;
-  $("expired").textContent = medicines.filter(expired).length;
-  $("due").textContent = medicines.filter(m => !expired(m)).length;
+        <div class="field full">
+          <label for="expiry">Expiry Date</label>
+          <input type="date" id="expiry" name="expiry" required>
+        </div>
 
-  const list = $("medicineList");
-  list.replaceChildren();
-  if (!medicines.length) list.textContent = "No medicines added yet.";
+        <button class="primary-btn full" id="submitBtn" type="submit">
+          Add Medicine
+        </button>
 
-  medicines.forEach(m => {
-    const article = document.createElement("article");
-    article.className = "medicine";
-    const heading = document.createElement("h3");
-    heading.textContent = m.name;
-    const details = document.createElement("p");
-    details.textContent = "Dosage: " + m.dosage + " · " + m.frequency;
-    const time = document.createElement("p");
-    time.textContent = "Reminder: " + m.time;
-    const date = document.createElement("p");
-    date.textContent = "Expiry: " + m.expiry;
-    date.className = expired(m) ? "warning" : "status";
-    date.textContent = (expired(m) ? "EXPIRED · " : "Expiry · ") + m.expiry;
-    const actions = document.createElement("div");
-    actions.className = "actions";
-    const edit = document.createElement("button");
-    edit.className = "secondary";
-    edit.textContent = "Edit";
-    edit.onclick = () => startEdit(m.id);
-    const remove = document.createElement("button");
-    remove.className = "danger";
-    remove.textContent = "Delete";
-    remove.onclick = () => {
-      if (confirm("Delete " + m.name + "?")) {
-        medicines = medicines.filter(x => x.id !== m.id);
-        delete taken[m.id];
-        save(); render();
-      }
-    };
-    actions.append(edit, remove);
-    article.append(heading, details, time, date, actions);
-    list.append(article);
-  });
+        <button class="secondary-btn full" id="cancelEdit" type="button" hidden>
+          Cancel Editing
+        </button>
+      </form>
 
-  const doses = $("doseList");
-  doses.replaceChildren();
-  const eligible = medicines.filter(m => !expired(m));
-  if (!eligible.length) doses.textContent = "Add a non-expired medicine to track today's dose.";
-  eligible.forEach(m => {
-    const row = document.createElement("article");
-    row.className = "medicine";
-    const title = document.createElement("strong");
-    title.textContent = m.name + " · " + m.time;
-    const status = document.createElement("p");
-    status.textContent = taken[m.id] ? "Acknowledged as taken" : "Awaiting acknowledgement";
-    const button = document.createElement("button");
-    button.className = taken[m.id] ? "secondary" : "primary";
-    button.textContent = taken[m.id] ? "Undo acknowledgement" : "Mark as taken";
-    button.onclick = () => {
-      if (taken[m.id]) delete taken[m.id];
-      else taken[m.id] = true;
-      save(); render();
-    };
-    row.append(title, status, button);
-    doses.append(row);
-  });
-}
+      <p class="notice">
+        Enter medicines according to the instructions given by your healthcare professional.
+        This website is a personal tracking demo, not a substitute for medical advice.
+      </p>
+    </section>
 
-function startEdit(id) {
-  const m = medicines.find(x => x.id === id);
-  if (!m) return;
-  editId = id;
-  $("name").value = m.name;
-  $("dosage").value = m.dosage;
-  $("frequency").value = m.frequency;
-  $("time").value = m.time;
-  $("expiry").value = m.expiry;
-  $("formTitle").textContent = "Edit Medicine";
-  $("submitBtn").textContent = "Save Changes";
-  $("cancelEdit").hidden = false;
-  $("name").focus();
-}
+    <section class="panel">
+      <h2>My Medicines</h2>
+      <div id="medicineList" class="medicine-list"></div>
+    </section>
 
-function resetForm() {
-  editId = null;
-  $("medicineForm").reset();
-  $("formTitle").textContent = "Add a Medicine";
-  $("submitBtn").textContent = "Add Medicine";
-  $("cancelEdit").hidden = true;
-}
+    <section class="panel">
+      <h2>Daily Dose Tracking</h2>
+      <p class="muted">Mark a dose as taken only after you have taken it.</p>
+      <div id="doseList" class="medicine-list"></div>
+    </section>
+  </main>
 
-$("cancelEdit").onclick = resetForm;
+  <footer>
+    SmartMed · Smart Medicine Management System
+  </footer>
 
-$("medicineForm").addEventListener("submit", event => {
-  event.preventDefault();
-  const m = {
-    id: editId || String(Date.now()),
-    name: $("name").value.trim(),
-    dosage: $("dosage").value.trim(),
-    frequency: $("frequency").value,
-    time: $("time").value,
-    expiry: $("expiry").value
-  };
-  if (editId) {
-    medicines = medicines.map(x => x.id === editId ? m : x);
-  } else {
-    medicines.push(m);
-  }
-  save();
-  resetForm();
-  render();
-});
-
-render();
-</script>
+  <script src="script.js"></script>
 </body>
 </html>
