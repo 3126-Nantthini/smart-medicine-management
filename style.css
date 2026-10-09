@@ -226,3 +226,69 @@ footer {
     font-size: 26px;
   }
 }
+
+/* Responsive layout improvements */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+img,
+input,
+select,
+button {
+  max-width: 100%;
+}
+
+main {
+  width: 100%;
+  min-width: 0;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.stat-card,
+.panel {
+  min-width: 0;
+}
+
+form {
+  width: 100%;
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  form {
+    grid-template-columns: 1fr;
+  }
+
+  .field,
+  .field.full {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
