@@ -4,101 +4,131 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Medicine Management</title>
+  <meta name="description" content="SmartMed medicine organizer with expiry monitoring and daily dose tracking.">
+  <title>SmartMed | Medicine Management</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <div class="logo">💊 SmartMed</div>
-    <span>Medicine Management Dashboard</span>
+  <header class="topbar">
+    <a class="brand" href="#">💊 SmartMed</a>
+    <span class="topbar-label">Medicine Management Dashboard</span>
   </header>
 
-  <main>
+  <main class="container">
     <section class="welcome">
+      <p class="eyebrow">PERSONAL HEALTH ORGANIZER</p>
       <h1>Smart Medicine Management</h1>
-      <p class="muted">Organize your medicines, schedules, and expiry dates in one place.</p>
+      <p class="muted">Manage your medicine records, expiry dates, and daily dose progress in one place.</p>
     </section>
 
     <section class="stats">
       <article class="stat-card">
-        <p>Total Medicines</p>
+        <span>Total Medicines</span>
         <h2 id="total">0</h2>
+        <small>All saved records</small>
       </article>
       <article class="stat-card">
-        <p>Active Medicines</p>
-        <h2 id="due">0</h2>
+        <span>Active Medicines</span>
+        <h2 id="active">0</h2>
+        <small>Not expired</small>
       </article>
       <article class="stat-card">
-        <p>Expired Medicines</p>
-        <h2 id="expired">0</h2>
+        <span>Expiry Alerts</span>
+        <h2 id="expiryAlerts">0</h2>
+        <small>Expired or expiring soon</small>
+      </article>
+      <article class="stat-card">
+        <span>Today's Progress</span>
+        <h2 id="progress">0%</h2>
+        <small id="progressText">0 of 0 acknowledged</small>
       </article>
     </section>
 
-    <section class="panel">
-      <h2 id="formTitle">Add a Medicine</h2>
+    <section class="panel" id="medicineFormPanel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">MEDICINE DETAILS</p>
+          <h2 id="formTitle">Add a Medicine</h2>
+        </div>
+      </div>
 
       <form id="medicineForm">
-        <div class="field">
-          <label for="name">Medicine Name</label>
-          <input id="name" name="name" placeholder="e.g. Medicine A" required>
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">Medicine Name</label>
+            <input id="name" maxlength="80" placeholder="e.g. Medicine A" required>
+          </div>
+          <div class="field">
+            <label for="dosage">Dosage</label>
+            <input id="dosage" maxlength="80" placeholder="e.g. 1 tablet" required>
+          </div>
+          <div class="field">
+            <label for="frequency">Frequency</label>
+            <select id="frequency" required>
+              <option value="">Select frequency</option>
+              <option>Once daily</option>
+              <option>Twice daily</option>
+              <option>Three times daily</option>
+              <option>As prescribed</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="time">Scheduled Time</label>
+            <input id="time" type="time" required>
+          </div>
+          <div class="field">
+            <label for="expiry">Expiry Date</label>
+            <input id="expiry" type="date" required>
+          </div>
         </div>
-
-        <div class="field">
-          <label for="dosage">Dosage</label>
-          <input id="dosage" name="dosage" placeholder="e.g. 1 tablet" required>
+        <div class="form-actions">
+          <button class="primary-btn" type="submit" id="submitBtn">+ Add Medicine</button>
+          <button class="secondary-btn" type="button" id="cancelEdit" hidden>Cancel</button>
         </div>
-
-        <div class="field">
-          <label for="frequency">Frequency</label>
-          <select id="frequency" name="frequency" required>
-            <option value="">Select frequency</option>
-            <option>Once daily</option>
-            <option>Twice daily</option>
-            <option>Three times daily</option>
-            <option>As prescribed</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="time">Reminder Time</label>
-          <input type="time" id="time" name="time" required>
-        </div>
-
-        <div class="field full">
-          <label for="expiry">Expiry Date</label>
-          <input type="date" id="expiry" name="expiry" required>
-        </div>
-
-        <button class="primary-btn full" id="submitBtn" type="submit">
-          Add Medicine
-        </button>
-
-        <button class="secondary-btn full" id="cancelEdit" type="button" hidden>
-          Cancel Editing
-        </button>
       </form>
 
       <p class="notice">
-        Enter medicines according to the instructions given by your healthcare professional.
-        This website is a personal tracking demo, not a substitute for medical advice.
+        Safety: Follow your healthcare professional's instructions. Expiry labels are informational.
+        SmartMed is an educational tracking website, not a medical device or substitute for medical advice.
       </p>
     </section>
 
     <section class="panel">
-      <h2>My Medicines</h2>
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">YOUR RECORDS</p>
+          <h2>My Medicines</h2>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <input id="searchInput" type="search" placeholder="Search by medicine name..." aria-label="Search medicines">
+        <select id="statusFilter" aria-label="Filter by expiry status">
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="soon">Expiring soon</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
       <div id="medicineList" class="medicine-list"></div>
     </section>
 
     <section class="panel">
-      <h2>Daily Dose Tracking</h2>
-      <p class="muted">Mark a dose as taken only after you have taken it.</p>
-      <div id="doseList" class="medicine-list"></div>
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">DAILY ROUTINE</p>
+          <h2>Daily Dose Checklist</h2>
+        </div>
+      </div>
+      <p class="muted">Mark a dose only after you have taken it. This checklist is manually updated.</p>
+      <div id="doseList" class="dose-list"></div>
     </section>
-  </main>
 
-  <footer>
-    SmartMed · Smart Medicine Management System
-  </footer>
+    <footer>
+      <span>SmartMed · Smart Medicine Management System</span>
+      <span>Educational project · Data stored in this browser</span>
+    </footer>
+  </main>
 
   <script src="script.js"></script>
 </body>
