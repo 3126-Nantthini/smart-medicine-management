@@ -196,5 +196,4 @@ form.addEventListener("submit", event => {
   resetForm();
   render();
 });
-
 render();
