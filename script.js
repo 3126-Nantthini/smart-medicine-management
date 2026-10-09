@@ -1,199 +1,291 @@
 
-const form = document.getElementById("medicineForm");
-const medicineList = document.getElementById("medicineList");
-const doseList = document.getElementById("doseList");
+const MEDICINES_KEY = "smartmed_medicines_v2";
+const TAKEN_KEY = "smartmed_dose_log_v2";
 
-let medicines = [];
-let taken = {};
+const $ = id => document.getElementById(id);
+
+const form = $("medicineForm");
+const medicineList = $("medicineList");
+const doseList = $("doseList");
+const searchInput = $("searchInput");
+const statusFilter = $("statusFilter");
+
+let medicines = loadData(MEDICINES_KEY, []);
+let doseLog = loadData(TAKEN_KEY, {});
 let editingId = null;
 
-try {
-  medicines = JSON.parse(
-    localStorage.getItem("smartMedicines") || "[]"
-  );
-} catch {
-  medicines = [];
-}
-
-try {
-  const saved = JSON.parse(
-    localStorage.getItem("smartTaken") || "{}"
-  );
-
-  if (saved.date === new Date().toLocaleDateString()) {
-    taken = saved.items || {};
+function loadData(key, fallback) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key));
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
   }
-} catch {
-  taken = {};
 }
 
 function saveData() {
-  localStorage.setItem("smartMedicines", JSON.stringify(medicines));
-  localStorage.setItem("smartTaken", JSON.stringify({
-    date: new Date().toLocaleDateString(),
-    items: taken
-  }));
+  try {
+    localStorage.setItem(MEDICINES_KEY, JSON.stringify(medicines));
+    localStorage.setItem(TAKEN_KEY, JSON.stringify(doseLog));
+    return true;
+  } catch {
+    alert("Your browser could not save the data. Check browser storage settings.");
+    return false;
+  }
 }
 
-function isExpired(medicine) {
-  return medicine.expiry < new Date().toISOString().slice(0, 10);
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function addText(parent, tag, text, className = "") {
-  const element = document.createElement(tag);
-  element.textContent = text;
-  if (className) element.className = className;
-  parent.appendChild(element);
-  return element;
+function daysUntil(dateString) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiryDate = new Date(`${dateString}T00:00:00`);
+  return Math.round((expiryDate - today) / 86400000);
+}
+
+function getStatus(medicine) {
+  const days = daysUntil(medicine.expiry);
+
+  if (days < 0) {
+    return { key: "expired", label: "Expired" };
+  }
+
+  if (days <= 30) {
+    return { key: "soon", label: "Expiring soon" };
+  }
+
+  return { key: "active", label: "Active" };
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function formatDate(dateString) {
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString(
+    undefined,
+    { day: "2-digit", month: "short", year: "numeric" }
+  );
+}
+
+function isDoseTaken(id) {
+  return doseLog[localDateKey()]?.includes(id) ?? false;
+}
+
+function renderDashboard() {
+  const active = medicines.filter(m => getStatus(m).key !== "expired");
+  const alerts = medicines.filter(m => getStatus(m).key !== "active");
+  const todayDoses = active;
+  const completed = todayDoses.filter(m => isDoseTaken(m.id)).length;
+  const percent = todayDoses.length
+    ? Math.round((completed / todayDoses.length) * 100)
+    : 0;
+
+  $("total").textContent = medicines.length;
+  $("active").textContent = active.length;
+  $("expiryAlerts").textContent = alerts.length;
+  $("progress").textContent = `${percent}%`;
+  $("progressText").textContent =
+    `${completed} of ${todayDoses.length} acknowledged`;
+}
+
+function renderMedicines() {
+  const query = searchInput.value.trim().toLowerCase();
+  const filter = statusFilter.value;
+
+  const filtered = medicines.filter(m => {
+    const matchesSearch =
+      `${m.name} ${m.dosage} ${m.frequency}`.toLowerCase().includes(query);
+    const matchesStatus = filter === "all" || getStatus(m).key === filter;
+    return matchesSearch && matchesStatus;
+  });
+
+  if (!filtered.length) {
+    medicineList.innerHTML = `
+      <div class="empty-state">
+        <strong>${medicines.length ? "No matching medicines" : "No medicines added yet"}</strong>
+        ${medicines.length
+          ? "Try changing your search or status filter."
+          : "Use the form above to add your first medicine."}
+      </div>`;
+    return;
+  }
+
+  medicineList.innerHTML = filtered.map(m => {
+    const status = getStatus(m);
+    return `
+      <article class="medicine-card">
+        <div class="medicine-card-top">
+          <div>
+            <h3>${escapeHTML(m.name)}</h3>
+            <p class="medicine-meta">${escapeHTML(m.dosage)} · ${escapeHTML(m.frequency)}</p>
+          </div>
+          <span class="status ${status.key}">${status.label}</span>
+        </div>
+        <p class="medicine-meta">
+          Scheduled time: <strong>${escapeHTML(m.time)}</strong>
+        </p>
+        <div class="card-bottom">
+          <span class="expiry-label">Expiry: ${formatDate(m.expiry)}</span>
+          <div class="actions">
+            <button class="small-btn" data-action="edit" data-id="${m.id}">Edit</button>
+            <button class="danger-btn" data-action="delete" data-id="${m.id}">Delete</button>
+          </div>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+function renderDoseList() {
+  const active = medicines.filter(m => getStatus(m).key !== "expired");
+
+  if (!active.length) {
+    doseList.innerHTML = `
+      <div class="empty-state">
+        <strong>No active medicines to track</strong>
+        Add a medicine with a valid expiry date to begin.
+      </div>`;
+    return;
+  }
+
+  doseList.innerHTML = active.map(m => {
+    const taken = isDoseTaken(m.id);
+
+    return `
+      <article class="dose-card">
+        <div class="dose-info">
+          <strong>${escapeHTML(m.name)} · ${escapeHTML(m.dosage)}</strong>
+          <span>${escapeHTML(m.time)} · ${escapeHTML(m.frequency)}</span>
+        </div>
+        ${taken
+          ? `<span class="taken-label">✓ Acknowledged</span>
+             <button class="small-btn" data-action="undo" data-id="${m.id}">Undo</button>`
+          : `<button class="primary-btn" data-action="taken" data-id="${m.id}">Mark as taken</button>`}
+      </article>`;
+  }).join("");
 }
 
 function render() {
-  document.getElementById("total").textContent = medicines.length;
-
-  document.getElementById("expired").textContent =
-    medicines.filter(isExpired).length;
-
-  document.getElementById("due").textContent =
-    medicines.filter(m => !isExpired(m)).length;
-
-  medicineList.replaceChildren();
-
-  if (!medicines.length) {
-    addText(medicineList, "p", "No medicines added yet.", "empty-state");
-  }
-
-  medicines.forEach(medicine => {
-    const card = document.createElement("article");
-    card.className = "medicine-card";
-
-    addText(card, "h3", medicine.name);
-    addText(card, "p", "Dosage: " + medicine.dosage);
-    addText(card, "p", "Frequency: " + medicine.frequency);
-    addText(card, "p", "Reminder: " + medicine.time);
-
-    addText(
-      card,
-      "p",
-      "Expiry: " + medicine.expiry,
-      isExpired(medicine) ? "warning" : "status"
-    );
-
-    const actions = document.createElement("div");
-    actions.className = "actions";
-
-    const edit = addText(actions, "button", "Edit", "secondary-btn");
-    edit.type = "button";
-    edit.addEventListener("click", () => editMedicine(medicine.id));
-
-    const remove = addText(actions, "button", "Delete", "danger-btn");
-    remove.type = "button";
-    remove.addEventListener("click", () => {
-      if (confirm("Delete " + medicine.name + "?")) {
-        medicines = medicines.filter(m => m.id !== medicine.id);
-        delete taken[medicine.id];
-        saveData();
-        render();
-      }
-    });
-
-    card.appendChild(actions);
-    medicineList.appendChild(card);
-  });
-
-  doseList.replaceChildren();
-
-  const activeMedicines = medicines.filter(m => !isExpired(m));
-
-  if (!activeMedicines.length) {
-    addText(doseList, "p", "No active medicines to track.", "empty-state");
-  }
-
-  activeMedicines.forEach(medicine => {
-    const card = document.createElement("article");
-    card.className = "medicine-card";
-
-    addText(card, "h3", medicine.name + " · " + medicine.time);
-
-    addText(
-      card,
-      "p",
-      taken[medicine.id]
-        ? "Acknowledged as taken"
-        : "Awaiting acknowledgement"
-    );
-
-    const toggle = addText(
-      card,
-      "button",
-      taken[medicine.id] ? "Undo acknowledgement" : "Mark as taken",
-      taken[medicine.id] ? "secondary-btn" : "primary-btn"
-    );
-
-    toggle.type = "button";
-    toggle.addEventListener("click", () => {
-      if (taken[medicine.id]) {
-        delete taken[medicine.id];
-      } else {
-        taken[medicine.id] = true;
-      }
-      saveData();
-      render();
-    });
-
-    doseList.appendChild(card);
-  });
-}
-
-function editMedicine(id) {
-  const medicine = medicines.find(m => m.id === id);
-  if (!medicine) return;
-
-  editingId = id;
-  document.getElementById("name").value = medicine.name;
-  document.getElementById("dosage").value = medicine.dosage;
-  document.getElementById("frequency").value = medicine.frequency;
-  document.getElementById("time").value = medicine.time;
-  document.getElementById("expiry").value = medicine.expiry;
-
-  document.getElementById("formTitle").textContent = "Edit Medicine";
-  document.getElementById("submitBtn").textContent = "Save Changes";
-  document.getElementById("cancelEdit").hidden = false;
-
-  form.scrollIntoView({ behavior: "smooth" });
+  renderDashboard();
+  renderMedicines();
+  renderDoseList();
 }
 
 function resetForm() {
-  editingId = null;
   form.reset();
-  document.getElementById("formTitle").textContent = "Add a Medicine";
-  document.getElementById("submitBtn").textContent = "Add Medicine";
-  document.getElementById("cancelEdit").hidden = true;
+  editingId = null;
+  $("formTitle").textContent = "Add a Medicine";
+  $("submitBtn").textContent = "+ Add Medicine";
+  $("cancelEdit").hidden = true;
 }
-
-document.getElementById("cancelEdit").addEventListener("click", resetForm);
 
 form.addEventListener("submit", event => {
   event.preventDefault();
 
-  const medicine = {
-    id: editingId || String(Date.now()),
-    name: document.getElementById("name").value.trim(),
-    dosage: document.getElementById("dosage").value.trim(),
-    frequency: document.getElementById("frequency").value,
-    time: document.getElementById("time").value,
-    expiry: document.getElementById("expiry").value
+  const record = {
+    id: editingId || (
+      Date.now().toString(36) +
+      Math.random().toString(36).slice(2, 8)
+    ),
+    name: $("name").value.trim(),
+    dosage: $("dosage").value.trim(),
+    frequency: $("frequency").value,
+    time: $("time").value,
+    expiry: $("expiry").value
   };
 
-  if (editingId) {
-    medicines = medicines.map(m =>
-      m.id === editingId ? medicine : m
-    );
-  } else {
-    medicines.push(medicine);
+  if (!record.name || !record.dosage ||
+      !record.frequency || !record.time || !record.expiry) {
+    alert("Please complete all medicine fields.");
+    return;
   }
 
-  saveData();
+  if (editingId) {
+    medicines = medicines.map(m => m.id === editingId ? record : m);
+  } else {
+    medicines.push(record);
+  }
+
+  if (!saveData()) return;
+
   resetForm();
   render();
 });
+
+medicineList.addEventListener("click", event => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+
+  const { action, id } = button.dataset;
+  const medicine = medicines.find(m => m.id === id);
+  if (!medicine) return;
+
+  if (action === "edit") {
+    editingId = id;
+    $("name").value = medicine.name;
+    $("dosage").value = medicine.dosage;
+    $("frequency").value = medicine.frequency;
+    $("time").value = medicine.time;
+    $("expiry").value = medicine.expiry;
+    $("formTitle").textContent = "Edit Medicine";
+    $("submitBtn").textContent = "Save Changes";
+    $("cancelEdit").hidden = false;
+    $("medicineFormPanel").scrollIntoView({ behavior: "smooth" });
+  }
+
+  if (action === "delete") {
+    if (!confirm(`Delete ${medicine.name} from your list?`)) return;
+
+    medicines = medicines.filter(m => m.id !== id);
+
+    Object.keys(doseLog).forEach(day => {
+      doseLog[day] = doseLog[day].filter(savedId => savedId !== id);
+      if (!doseLog[day].length) delete doseLog[day];
+    });
+
+    if (editingId === id) resetForm();
+
+    if (!saveData()) return;
+    render();
+  }
+});
+
+doseList.addEventListener("click", event => {
+  const button = event.target.closest("button[data-action]");
+  if (!button) return;
+
+  const { action, id } = button.dataset;
+  const today = localDateKey();
+
+  if (!doseLog[today]) doseLog[today] = [];
+
+  if (action === "taken" && !doseLog[today].includes(id)) {
+    doseLog[today].push(id);
+  }
+
+  if (action === "undo") {
+    doseLog[today] = doseLog[today].filter(savedId => savedId !== id);
+  }
+
+  if (!doseLog[today].length) delete doseLog[today];
+
+  if (!saveData()) return;
+  render();
+});
+
+$("cancelEdit").addEventListener("click", resetForm);
+searchInput.addEventListener("input", renderMedicines);
+statusFilter.addEventListener("change", renderMedicines);
+
 render();
